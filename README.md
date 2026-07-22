@@ -596,13 +596,22 @@ sequenceDiagram
 
 ### 8. 트러블슈팅
 
-| 트러블슈팅 | 문제 | 원인 | 해결                                                                                        |
-|---|---|---|-------------------------------------------------------------------------------------------|
-| 로그인 처리 위치 충돌 | 로그인 API가 Controller와 Security Filter 양쪽에 구현될 수 있는 상황이 발생 | `JwtAuthenticationFilter`가 `/api/v1/auth/login` 요청을 Spring Security 필터 체인에서 먼저 처리하기 때문에 Controller login 메서드까지는 요청이 전달되지 않음 | 로그인 책임을 `JwtAuthenticationFilter`로 통일하고, Controller는 회원가입 API만 담당하도록 정리                   |
-| Soft Delete 데이터 조회 문제 | 삭제 처리된 데이터가 일반 조회/검색 결과에 포함될 수 있음 | JPA 기본 `findById()`는 `is_deleted` 값을 고려하지 않음 | 일반 조회·수정·삭제는 `findBy...AndIsDeletedFalse`를 사용하고, QueryDSL 검색에는 `isDeleted=false` 조건을 기본 적용 |
-| 주문 취소와 결제 취소 상태 불일치 | 주문은 취소됐지만 결제는 성공 상태로 남거나, 결제만 취소되는 문제가 발생 가능 | 주문, 결제, 재고가 각각 다른 엔티티에서 관리되어 한쪽 상태만 변경될 수 있음 | 주문 취소와 결제 취소 로직을 `@Transactional` 안에서 함께 처리해 주문 상태·결제 상태·재고 복구가 하나의 작업 단위로 반영되도록 구현 [@Transactional 적용범위](https://app.notion.com/p/team-georgia-pjt-dtl/Transactional-39ea26d65cda80639ee4e373b002b865)       |
-| 결제 중복 생성 방지 | 같은 주문에 대해 결제가 중복 생성될 수 있음 | 단순 조회 후 저장 방식으로는 동시 요청이나 재시도 상황을 완전히 막기 어려움 | 서비스에서 중복 결제를 먼저 검증하고, DB의 `order_id UNIQUE` 제약으로 한 번 더 막음                                 |
-| 예외 처리 방식 혼재 | 도메인마다 에러 응답 형식과 상태 코드 처리가 달라짐 | `IllegalArgumentException`, `ResponseStatusException`, `BusinessException`이 함께 사용됨 | `BusinessException + GlobalErrorCode + GlobalExceptionHandler` 기준으로 공통 예외 응답 구조를 통일       |
+**CASE 1. 검색 API 구현 시, QueryDSL 활용**
+
+| 문제 | 해결 | 결과 |
+|---|---|---|
+| 검색 조건이 많아질수록 `findBy...()` 메서드가 계속 증가 | QueryDSL을 적용하여 조건에 따라 동적으로 쿼리 생성 | 하나의 API로 다양한 검색 조건을 처리하고 코드의 유지보수성을 향상 |
+
+- QueryDSL 적용 도메인: Store, Product, AI History, Payment, Order, User, Review
+- 기대효과: 검색 기능 확장 용이 · 하나의 API로 다양한 조건 처리 · 코드 중복 감소 및 유지보수성 향상
+
+**CASE 2. 배송 가능 지역 검증 기준 통일**
+
+| 문제 | 원인 | 해결 | 결과 |
+|---|---|---|---|
+| 배송지 등록은 가능하지만, 주문 시 "서비스 가능 지역이 아닙니다." 오류가 발생 | 도메인마다 서로 다른 검증 기준 사용 — Address는 도로명 주소 기준 검증, Order는 특정 키워드(예: '광화문') 기준 검증 | 배송 가능 지역 검증 로직을 공동 Validator로 분리하여 Address와 Order가 동일한 검증 기준을 사용하고, 검증 로직을 한 곳에서 관리 | 배송지 등록과 주문 시 동일한 기준 적용, 중복 코드 제거, 유지보수성 및 일관성 향상 |
+
+- 기대효과: 일관된 검증으로 사용자 경험 향상 · 중복 코드 제거로 개발 효율성 향상 · 유지보수성 및 도메인 일관성 강화
 
 ### 9. 협업 과정에서 정리한 정책
 
