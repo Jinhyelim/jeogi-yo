@@ -5,13 +5,13 @@ import com.georgia.jeogiyo.user.dto.request.UserUpdateRequest;
 
 public class UserFix {
 	public static UserSignupRequest getUserSignupRequest() {
-		return new UserSignupRequest(
-				"test1234",
-				"password1234A@",
-				"nickname",
-				"02-000-0000",
-				"test@email.com"
-		);
+		return UserSignupRequest.builder()
+				.loginId("test1234")
+				.password("password1234A@")
+				.nickname("nickname")
+				.phone("02-000-0000")
+				.email("test@email.com")
+				.build();
 	}
 	
 	public static UserUpdateRequest getUserUpdateRequest() {

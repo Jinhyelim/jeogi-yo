@@ -1,8 +1,11 @@
 package com.georgia.jeogiyo.global.jwt;
 
+import com.georgia.jeogiyo.global.exception.BusinessException;
+import com.georgia.jeogiyo.global.exception.GlobalErrorCode;
 import com.georgia.jeogiyo.user.entity.Role;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SecurityException;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -87,8 +90,8 @@ public class JwtUtil {
         if (StringUtils.hasText(tokenValue) && tokenValue.startsWith(BEARER)) {
             return tokenValue.substring(BEARER.length());
         }
-        log.error("Not Found Token");
-        throw new NullPointerException("Not Found Token");
+        log.error("Invalid token format");
+        throw new BusinessException(GlobalErrorCode.INVALID_TOKEN);
     }
 
     // JWT 토큰 검증 (위변조 & 만료 검증)
@@ -99,14 +102,14 @@ public class JwtUtil {
                     .build()
                     .parseSignedClaims(token);
             return true;
-        } catch (SecurityException | MalformedJwtException | SignatureException e) {
-            log.error("Invalid JWT signature, 유효하지 않는 JWT 서명입니다.");
-        } catch (ExpiredJwtException e) {
-            log.error("Expired JWT token, 만료된 JWT token 입니다.");
-        } catch (UnsupportedJwtException e) {
-            log.error("Unsupported JWT token, 지원되지 않는 JWT 토큰 입니다.");
+        } catch (MalformedJwtException | SecurityException e) { // 유효하지 않는 JWT 서명
+            log.error("Invalid JWT signature: {}", e.getMessage());
+        } catch (ExpiredJwtException e) { // 만료된 JWT token
+            log.warn("Expired JWT token: {}", e.getMessage());
+        } catch (UnsupportedJwtException e) { // 지원되지 않는 JWT token
+            log.warn("Unsupported JWT token: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
-            log.error("JWT claims is empty, 잘못된 JWT 토큰 입니다.");
+            log.warn("JWT claims is empty: {}", e.getMessage());
         }
         return false;
     }

@@ -1,6 +1,7 @@
 package com.georgia.jeogiyo.global.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.georgia.jeogiyo.global.exception.BusinessException;
 import com.georgia.jeogiyo.global.response.CommonResponse;
 import com.georgia.jeogiyo.global.security.UserDetailsServiceImpl;
 import io.jsonwebtoken.Claims;
@@ -40,8 +41,14 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
         String tokenValue = jwtUtil.getTokenFromRequest(request);
 
         if (StringUtils.hasText(tokenValue)) {
-            // JWT 토큰 substring
-            tokenValue = jwtUtil.subStringToken(tokenValue);
+            // JWT 토큰 substring (Bearer 접두사 없으면 BusinessException -> 401)
+            try {
+                tokenValue = jwtUtil.subStringToken(tokenValue);
+            } catch (BusinessException e) {
+                log.error("Token Prefix Error: {}", e.getMessage());
+                writeUnauthorized(response, e.getMessage());
+                return;
+            }
 
             // JWT 토큰 검증 (위변조 & 만료 검증)
             if (jwtUtil.validateToken(tokenValue)) {

@@ -1,11 +1,5 @@
 package com.georgia.jeogiyo.user.service;
 
-import java.util.List;
-
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.georgia.jeogiyo.global.exception.BusinessException;
 import com.georgia.jeogiyo.global.exception.GlobalErrorCode;
 import com.georgia.jeogiyo.global.jwt.JwtUtil;
@@ -21,9 +15,13 @@ import com.georgia.jeogiyo.user.dto.response.UserSignupResponse;
 import com.georgia.jeogiyo.user.entity.Role;
 import com.georgia.jeogiyo.user.entity.User;
 import com.georgia.jeogiyo.user.repository.UserRepository;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Slf4j
@@ -58,19 +56,16 @@ public class UserService {
 	@Transactional(rollbackFor = Exception.class)
 	public UserSignupResponse signup(UserSignupRequest signupUser, Role role) {
 		if(userRepository.existsByEmail(signupUser.getEmail())) {
-			// TODO: 이미 사용중인 이메일입니다. 409
 			log.warn("SIGNUP_FAILED: Duplicate email = {}", signupUser.getEmail());
 			throw new BusinessException(GlobalErrorCode.DUPLICATE_EMAIL);
 		}
 		
 		if(userRepository.existsByNickname(signupUser.getNickname())) {
-			// TODO: 이미 사용중인 닉네임입니다. 409
 			log.warn("SIGNUP_FAILED: Duplicate nickname = {}", signupUser.getNickname());
 			throw new BusinessException(GlobalErrorCode.DUPLICATE_NICKNAME);
 		}
 		
 		if(userRepository.existsByLoginId(signupUser.getLoginId())) {
-			// TODO: 이미 사용중인 아이디입니다. 409
 			log.warn("SIGNUP_FAILED: Duplicate loginId = {}", signupUser.getLoginId());
 			throw new BusinessException(GlobalErrorCode.DUPLICATE_LOGIN_ID);
 		}

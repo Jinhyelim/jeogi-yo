@@ -613,6 +613,15 @@ sequenceDiagram
 
 - 기대효과: 일관된 검증으로 사용자 경험 향상 · 중복 코드 제거로 개발 효율성 향상 · 유지보수성 및 도메인 일관성 강화
 
+**CASE 3. JWT 인가 필터에서 발생하는 미처리 예외**
+
+| 문제 | 원인 | 해결 | 결과 |
+|---|---|---|---|
+| `Authorization` 헤더에 `Bearer ` 접두사가 없는 토큰이 오면 401이 아닌 예외로 응답이 깨짐 | `JwtUtil.subStringToken()`이 `NullPointerException`을 던지는데 `JwtAuthorizationFilter`가 이를 catch하지 않아 필터 체인 밖으로 예외가 그대로 전파됨 | `subStringToken()`이 의미에 맞는 `BusinessException(GlobalErrorCode.INVALID_TOKEN)`을 던지도록 변경하고, 필터에서 이를 catch해 401 응답으로 변환 | 토큰 형식 오류도 위변조·만료 토큰과 동일하게 일관된 401 응답을 반환, `SecurityFilterTest`로 회귀 방지 |
+
+- 발견 경위: `SecurityFilterTest` 작성 중 Bearer 접두사 누락 케이스를 검증하다가 발견
+- `GlobalExceptionHandler`(`@RestControllerAdvice`)는 `DispatcherServlet` 이전 단계인 필터 체인의 예외는 잡지 못해, 필터 내부에서 직접 처리해야 함
+
 ### 9. 협업 과정에서 정리한 정책
 
 | 정책 | 정리 내용 | 설명 |
