@@ -31,7 +31,7 @@ public class UserSignupRequest {
 	private String nickname;
 	
 	@NotBlank(message = "연락처는 필수 항목입니다.")
-  @Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", message = "올바른 연락처 형식이 아닙니다.")
+  	@Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", message = "올바른 연락처 형식이 아닙니다.")
 	private String phone;
 	
 	@NotBlank(message = "이메일은 필수 항목입니다.")

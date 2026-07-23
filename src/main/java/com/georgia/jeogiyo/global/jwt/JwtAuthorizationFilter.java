@@ -25,7 +25,7 @@ import java.io.IOException;
  * ──────────────────────────────────────────────────────────────────────────────────────────────────
  * 작성자: 진혜림
  * 작성일: 2026-07-10
- * 설명: JWT 검증 및 인가, 인증 객체 생성 -> SecurityContext, Authentication, SecurityContextHolder 생성
+ * 설명: JWT 검증 및 인가, 인증 객체 생성 -> SecurityContext, Authentication, SecurityContextHolder
  * ──────────────────────────────────────────────────────────────────────────────────────────────────
  */
 @Slf4j
@@ -90,7 +90,7 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
         SecurityContextHolder.setContext(context);
     }
 
-    // 인증 객체 생성
+    // Authentication 생성
     private Authentication createAuthentication(String LoginId) {
         UserDetails userDetails = userDetailsService.loadUserByUsername(LoginId);
         return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
