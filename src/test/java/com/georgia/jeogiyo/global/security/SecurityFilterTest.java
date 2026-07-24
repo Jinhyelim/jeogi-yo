@@ -7,6 +7,9 @@ import com.georgia.jeogiyo.user.dto.request.UserSignupRequest;
 import com.georgia.jeogiyo.user.entity.Role;
 import com.georgia.jeogiyo.user.fixture.UserFix;
 import com.georgia.jeogiyo.user.service.UserService;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,8 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.security.Key;
+import java.util.Date;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -100,6 +107,61 @@ public class SecurityFilterTest {
     void protectedApi_withoutToken_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/stores"))
                 .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("인증이 필요합니다."));
+    }
+
+    @Test
+    @DisplayName("위변조된 토큰 쿠키로 요청하면 401을 반환한다")
+    void protectedApi_withTamperedToken_returns401() throws Exception {
+        Cookie cookie = new Cookie(JwtUtil.AUTHORIZATION_HEADER, "Bearer%20invalid.token.value");
+
+        mockMvc.perform(get("/api/v1/stores").cookie(cookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("유효하지 않은 토큰입니다."));
+    }
+
+    @Test
+    @DisplayName("만료된 토큰으로 요청하면 401을 반환한다")
+    void protectedApi_withExpiredToken_returns401() throws Exception {
+        Key key = (Key) ReflectionTestUtils.getField(jwtUtil, "key"); // jwtUtil에 접근하여 private 시크릿키 꺼내기 (테스트 용)
+
+        // 만료된 토큰 생성
+        String expiredToken = JwtUtil.BEARER + Jwts.builder()
+                .subject("est1234")
+                .claim(JwtUtil.AUTHORIZATION_KEY, Role.CUSTOMER)
+                .issuedAt(new Date(System.currentTimeMillis() - 120_000))
+                .expiration(new Date(System.currentTimeMillis() - 60_000)) // 이미 만료됨
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+
+        mockMvc.perform(get("/api/v1/stores")
+                        .header(JwtUtil.AUTHORIZATION_HEADER, expiredToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("유효하지 않은 토큰입니다."));
+    }
+
+    @Test
+    @DisplayName("유효한 토큰이지만 존재하지 않는 회원이면 401을 반환한다")
+    void protectedApi_withTokenOfNonExistentUser_returns401() throws Exception {
+        String token = jwtUtil.createToken("ghost999", Role.CUSTOMER); // 가입된 적 없는 loginId
+
+        mockMvc.perform(get("/api/v1/stores")
+                        .header(JwtUtil.AUTHORIZATION_HEADER, token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("인증에 실패했습니다."));
+    }
+
+    @Test
+    @DisplayName("Bearer 접두사가 없는 토큰이면 401을 반환한다")
+    void protectedApi_withoutBearerPrefix_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/stores")
+                        .header(JwtUtil.AUTHORIZATION_HEADER, "invalid.token.value"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("유효하지 않은 토큰입니다."));
     }
 }
